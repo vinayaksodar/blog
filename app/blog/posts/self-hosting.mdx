@@ -1,0 +1,121 @@
+---
+title: "VPS hosting: The pain and the pleasure"
+publishedAt: "2025-10-28"
+summary: "Why and why not manage your own servers and how to do it."
+---
+
+## The dilemma
+
+In the era of the big cloud which offers any service you can think of not to mention the plethora of "cloud-providers" built on top of them whatever is the need for your own vps?
+
+Well for one to deploy a simple app now we seem to need atleast 3-5 services, a cdn for your frontend, a seperate deployment for your frontend, a serverless or contanerised backend and finally a database.
+
+With either simpler clouds for each service or the massive complexity of aws which provides everything have we entered into an age where we are overengineering for the majority.
+
+Each of the solutions provided above is miles ahead of what we had in the past in terms of the flexibility and resilience it provides but they have introduced so many layers of abstraction not to mention much higher pricing.
+
+---
+
+## Pricing
+
+Understanding pricing in clouds is something people may be able to major in soon.
+
+Some clouds are now exclusively built to sove the complexity of pricing in biggerclouds like digital ocean but the pricing is almost similar.
+
+Some VPS providers want you to sign up for longer term contracts for sensible pricing or their offering is more or les the same price as the cloud.
+
+Perfect — you’ve already got a distinctive tone: plainspoken, mildly skeptical, and conversational with a bit of dry humor. I’ll write the continuation in your voice, expanding your post naturally from where you stopped, using the same rhythm and phrasing style.
+
+---
+
+## The control
+
+Here’s the main reason anyone still bothers with a VPS — control.
+
+When you run your own box, you decide how everything works. You can deploy how you like, tune your NGINX, cache aggressively, or skip half the “modern” layers that exist mostly to abstract away the same Linux box you now directly own.
+
+There’s no “IAM role” or “security group” you have to spend an hour deciphering. You just SSH in, edit a config, restart a service, and it works. It’s clean. It’s honest.
+
+And when something breaks, it’s your fault — but at least it’s _your_ fault, not some mystery deep inside a managed service three layers removed.
+
+---
+
+## The pain
+
+The flip side of control is responsibility.
+Security updates, patches, SSL renewals, firewalls, backups — all of that lands on your plate.
+You can’t just “open a ticket” when something goes wrong.
+
+Your server goes down? You’re the SRE.
+You misconfigure SSH? Congratulations, you’ve locked yourself out of production.
+You forgot to set up monitoring? You’ll find out at 2 a.m. when your site vanishes from the internet.
+
+Running a VPS keeps you humble. It teaches you that all the “magic” of cloud platforms is really just someone else doing this grunt work for you — and charging 5x for it.
+
+But here is the silver lining 90% of the stuff above only takes a lot of time the first time you do it then you learn to automate it.
+
+---
+
+## The new tooling
+
+But it’s not 2010 anymore. Setting up a VPS doesn’t have to mean spending weekends in `/etc/nginx/sites-available`.
+There are tools like **CapRover**, **Dokku**, and **Coolify** that make deploying apps almost painless. You get a web UI, one-click SSL, Git push deploys — the whole deal.
+
+Although go too deep down this rabbit hole too early and you end up thinking isn't this what I was trying to avoid in the first place.
+
+Even a simple Bash script or **Ansible playbook** can turn a bare VM into a production-ready environment in minutes.
+Hetzner, Vultr, Linode — they’ve made spinning up a fresh machine faster than ordering coffee.
+
+So yes, managing a VPS still takes effort — but it’s not the arcane art it once was.
+
+---
+
+## Scaling and reality
+
+Of course, the fun stops when traffic grows.
+A single VPS is fine until it isn’t.
+Once you start thinking about load balancing, database replication, or uptime SLAs, you realize why cloud platforms exist in the first place.
+
+But this is good, technical debt is actully a good thing it means you did not overengineer anything and waste your time early on.
+
+At that point, you either start scripting your own mini-cloud or you go back to AWS with your tail between your legs.
+
+That’s fine. The goal isn’t to stay “pure.” It’s to know what trade-offs you’re making.
+
+---
+
+## Security and maintenance
+
+If you go the VPS route, security isn’t optional.
+You’ll want SSH keys only, password login disabled, fail2ban, UFW, automatic updates, offsite backups, maybe even monitoring alerts through something like Uptime Kuma or Healthchecks.
+
+It’s a bit of a checklist — but once it’s done, it’s solid.
+There’s a weird satisfaction in knowing your tiny $5 server is battle-hardened and quietly doing its job.
+
+---
+
+## When to pick what
+
+**A VPS makes sense if:**
+
+- You are starting out and the main purpose is to learn.(go for this blindly you cannot swim in the oceans if you don't even know how to float)
+- You want predictable pricing and control.
+- You’re hosting personal or small-scale projects or MVPs.
+
+**Go cloud if:**
+
+- You have legitimate **paying** customers who are recommending your product i.e you have achieved PMF.
+- That is it.
+
+---
+
+## The philosophy
+
+Running your own server reminds you how the internet actually works.
+It strips away the glossy dashboards and managed layers and leaves you with a machine, a terminal, and the quiet realization that it’s all just software.
+
+It’s a mix of pain and pleasure.
+The pain comes from the responsibility and the inital upfront time spent.
+The pleasure comes from ownership and actually having root access to do anything you want.
+
+That’s the deal.
