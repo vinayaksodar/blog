@@ -1,0 +1,254 @@
+---
+title: "Forcing Reinforcement Learning Where It Wasn’t Needed"
+publishedAt: "2026-01-21"
+summary: "How I tried to overengineer learning for my typing website—and why the simplest solution won."
+---
+
+## The temptation
+
+I was building a typing tutor [rlytype.com](https://rlytype.com).
+
+The goal was simple: increase a user’s typing speed across different *patterns*—unigrams, bigrams, trigrams, and so on. If someone is slow on `th`, they should see more `th`. If they’ve mastered `ing`, stop wasting their time.
+
+Naturally, my brain went:
+
+> “This sounds like reinforcement learning.”
+
+There’s a *state*, there’s an *action*, there’s a *reward*. Surely this is a textbook RL problem.
+
+It wasn’t.
+
+## Trying to force a Markov world
+
+The classical RL framing goes like this:
+
+* **State**: the current situation of the agent
+* **Action**: what the agent does next
+* **Reward**: how good that action was
+* **Transition**: how the state changes
+
+I tried to define a state for typing.
+
+Maybe the state is:
+
+* current typing speed for all patterns?
+* a vector of latencies and error rates?
+* a rolling window of recent performance?
+
+Immediately, this felt wrong.
+
+There’s no meaningful *state transition*. Practicing `th` doesn’t transition you into a new, well-defined state that then constrains future decisions. Typing skill accumulates slowly, unevenly, and independently across hundreds of patterns.
+
+The Markov assumption collapses almost instantly.
+
+So Q-learning? Value iteration? Forget it. There’s no clean state, no transition dynamics, and no reason to believe future rewards depend only on the current snapshot.
+
+At best, this isn’t an RL problem.
+
+## Reduction to a bandit problem
+
+Once I admitted that, the problem shrank.
+
+Each typing pattern is independent.
+At each step, I need to **choose one pattern to practice next**.
+I observe:
+
+* how long it took
+* whether the user made an error
+
+There’s no long-term planning—just exploration vs exploitation.
+
+This is a **multi-armed bandit**.
+
+Each pattern is an arm.
+Pull an arm → observe latency and error.
+Repeat.
+
+Great. Simple. Elegant.
+
+Except… I didn’t stop there.
+
+## “Let’s make it Bayesian” (mistake #2)
+
+I decided to be clever.
+
+For each pattern, I modeled uncertainty explicitly.
+
+### Posterior modeling
+
+* **Latency**
+  Modeled as a Normal distribution
+
+  * Mean = EWMA latency
+  * Variance = confidence / consistency
+  * Track `n` to know how reliable this estimate is
+
+* **Error rate**
+  Modeled as a Beta distribution
+
+  * α = correct executions
+  * β = errors or extremely slow executions (> 3× user median)
+
+So far, so reasonable.
+
+Then I used **Thompson Sampling** to rank patterns.
+
+For each pattern `p`:
+
+1. Sample an error probability
+
+   $$
+   S_{err} \sim \text{Beta}(\alpha, \beta)
+   $$
+
+2. Sample a latency
+
+   $$
+   S_{lat} \sim \mathcal{N}(\mu, \sigma^2)
+   $$
+
+3. Compute a gap from target
+
+   $$
+   G = \max(0, S_{lat} - \text{TargetLatency})
+   $$
+
+4. Add a **recency boost** (patterns not seen recently bubble up)
+
+5. Apply a **mastery penalty**
+   If:
+
+   * error rate is tiny
+   * variance is low
+     then heavily suppress the pattern
+
+### Final priority score
+
+Everything collapsed into a single score:
+
+```ts
+score =
+  w_unc * sampleStd +
+  w_weak * Gap +
+  w_time * TimeBoost +
+  w_error * ErrorRate * 100 -
+  w_fatigue * Fatigue -
+  MasteryPenalty;
+```
+
+Patterns were sorted by this score, highest first.
+
+It *worked*.
+
+It also sucked.
+
+## The hidden cost: knobs everywhere
+
+This system had problems that weren’t obvious at first.
+
+### 1. Too many arbitrary knobs
+
+* How strong should the mastery penalty be?
+* How fast should time boost grow?
+* How much uncertainty is “enough”?
+* Why multiply error by 100?
+* Why not 50?
+
+None of these had principled answers.
+Every parameter was a vibe check.
+
+### 2. Mastery penalties are hacks
+
+“Suppress mastered patterns” sounds reasonable, until you realize:
+
+* Mastery is fuzzy
+* People regress
+* Context matters
+
+So you add exceptions.
+Then exceptions to exceptions.
+Now you’re maintaining a rule engine disguised as probability.
+
+### 3. Recency breaks at scale
+
+With:
+
+* ~26 unigrams: fine
+* ~600 bigrams: shaky
+* **thousands of trigrams**: completely meaningless
+
+Most patterns won’t be seen “recently” anyway.
+Time-based boosts become noise.
+
+### 4. The user already told me the reward
+
+This was the real realization.
+
+The user *explicitly sets a typing speed goal*.
+
+They don’t want “optimal exploration”.
+They want to get from **here → there**.
+
+So why am I inferring a reward function when the user handed it to me?
+
+## The embarrassing final solution
+
+I deleted almost everything.
+
+No bandits.
+No Thompson sampling.
+No mastery heuristics.
+No recency boosts.
+
+For each pattern:
+
+$$
+\text{score} = \text{EWMA_Latency} - \text{DesiredLatency}
+$$
+
+That’s it.
+
+* Positive score → pattern is slower than the goal → practice it
+* Negative score → pattern is faster than the goal → deprioritize it
+
+The “desired latency” comes directly from the user’s target WPM.
+
+This turned the system into **goal-oriented learning** instead of reward-inference theater.
+
+It worked better.
+It was easier to reason about.
+And it scaled effortlessly to thousands of patterns.
+
+## The lesson
+
+It’s very tempting to reach for sophisticated algorithms:
+
+* Reinforcement learning
+* Bayesian posteriors
+* Thompson sampling
+* Carefully weighted scoring functions
+
+They feel *correct*.
+They feel *smart*.
+
+But sophistication has a cost:
+
+* more parameters
+* more failure modes
+* more things you can’t explain
+
+If the problem is simple, let it be simple.
+
+Especially when the user has already told you what “success” looks like.
+
+Sometimes the best learning algorithm is just:
+
+> “What am I bad at relative to my goal?”
+
+And nothing more.
+
+
+---
+Check out RlyType: [rlytype.com](https://rlytype.com) 
+
+![RlyType](/rlytype.png)
